@@ -5,6 +5,7 @@ const cors = require("cors");
 // Cargar credenciales de Firebase Admin
 const serviceAccount = require("./serviceAccountKey.json");
 
+
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
   projectId: serviceAccount.project_id, // Soluciona el error de Project ID
