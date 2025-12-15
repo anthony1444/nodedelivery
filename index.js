@@ -32,7 +32,7 @@ app.post("/api/enviarNotificacionMasiva", async (req, res) => {
     // Extraer tokens válidos
     const tokens = tokensSnapshot.docs.map((doc) => doc.data().tokenpush).filter(tokenpush => tokenpush);
     console.log(tokens);
-    
+
     if (tokens.length === 0) {
       return res.status(400).json({ error: "No se encontraron tokens válidos." });
     }
@@ -52,6 +52,45 @@ app.post("/api/enviarNotificacionMasiva", async (req, res) => {
     return res.status(200).json({ success: true, response });
   } catch (error) {
     console.error("Error enviando notificación:", error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// Ruta para actualizar el estado de las órdenes masivamente
+app.post("/api/updateStatus", async (req, res) => {
+  try {
+    const { currentstatus, newstatus } = req.body;
+
+    if (!currentstatus || !newstatus) {
+      return res.status(400).json({ error: "Parámetros currentstatus y newstatus son requeridos." });
+    }
+
+    // Referencia a la colección 'orders' (Asumido, cambiar si es otra colección)
+    const collectionRef = db.collection("orders");
+    const snapshot = await collectionRef.where("status", "==", currentstatus).get();
+
+    if (snapshot.empty) {
+      return res.status(404).json({ message: `No se encontraron órdenes con estado ${currentstatus}.` });
+    }
+
+    // Firestore permite batches de hasta 500 operaciones
+    const batch = db.batch();
+    let count = 0;
+
+    snapshot.docs.forEach((doc) => {
+      batch.update(doc.ref, { status: newstatus });
+      count++;
+    });
+
+    await batch.commit();
+
+    return res.status(200).json({
+      success: true,
+      message: `Se actualizaron ${count} órdenes de '${currentstatus}' a '${newstatus}'.`
+    });
+
+  } catch (error) {
+    console.error("Error actualizando estados:", error);
     return res.status(500).json({ error: error.message });
   }
 });
